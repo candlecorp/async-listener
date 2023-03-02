@@ -1,0 +1,12 @@
+[package]
+name = "async-listener"
+version = "0.1.0"
+edition = "2021"
+
+[dev-dependencies]
+tempfile = "3.4.0"
+
+[dependencies]
+tokio = { version = "1.26.0", features = ["full"] }
+tokio-tls = "0.3.1"
+tracing = "0.1.37"
