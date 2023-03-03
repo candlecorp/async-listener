@@ -4,7 +4,6 @@ mod tests {
     use futures::pin_mut;
     use futures::stream::StreamExt;
     use std::time::Duration;
-    use tokio::time::Instant;
 
     #[tokio::test]
     async fn test_streaming_fs_watch() {

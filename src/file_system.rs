@@ -4,7 +4,7 @@ use futures::{
     SinkExt, Stream, StreamExt,
 };
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 // Define a new struct to represent file system events
 #[derive(Debug)]
