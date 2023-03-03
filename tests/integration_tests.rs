@@ -1,59 +1,59 @@
 #[cfg(test)]
 mod tests {
     use async_listener::file_system;
+    use futures::pin_mut;
+    use futures::stream::StreamExt;
     use std::time::Duration;
-    use tempfile::tempdir;
-    use tokio::sync::mpsc::channel;
+    use tokio::time::Instant;
 
     #[tokio::test]
-    async fn test_async_watch() {
-        // Create a temporary directory and file to watch
-        let temp_dir = tempdir().expect("failed to create temp dir");
-        let temp_file = temp_dir.path().join("test.txt");
-        let temp_file_clone = temp_file.clone();
+    async fn test_streaming_fs_watch() {
+        // Create a temporary directory to use for the test
+        let temp_dir = tempfile::tempdir().unwrap();
 
-        std::fs::write(&temp_file, "hello world").expect("failed to write to temp file");
+        // Create a file in the temporary directory
+        let test_file1 = temp_dir.path().join("test11.txt");
+        let test_file2 = temp_dir.path().join("test23.txt");
+        let test_file3 = temp_dir.path().join("test33.txt");
+        let test_file4 = temp_dir.path().join("test44.txt");
 
-        // Create a channel for communication between the test and the watcher task
-        let (tx, mut rx) = channel(1);
+        let mut events = Vec::new();
 
-        // Spawn a task to listen for file system events
-        let handle = tokio::spawn(async move {
-            let mut count = 0;
-            let result = file_system::async_watch(temp_file).await;
-            if let Err(e) = &result {
-                println!("async_watch error: {:?}", e);
+        let handle = tokio::task::spawn(async move {
+            // Create the stream and wait for it to produce some events
+            let stream = file_system::streaming_fs_watch(temp_dir.path().to_path_buf()).await;
+            pin_mut!(stream);
+
+            // Wait for the stream to start
+            tokio::time::sleep(Duration::from_millis(500)).await;
+
+            std::fs::write(&test_file1, "test1").unwrap();
+            std::fs::write(&test_file2, "test2").unwrap();
+            std::fs::write(&test_file3, "test3").unwrap();
+            std::fs::write(&test_file4, "test4").unwrap();
+
+            while let Some(result) = stream.next().await {
+                events.push(result.unwrap());
+                if events.len() >= 8 {
+                    break;
+                }
             }
-            assert!(result.is_ok());
-            count += 1;
-            println!("count: {}", count);
 
-            // Wait for the test to signal that it's time to stop
-            rx.recv().await.expect("channel closed");
-
-            // Check that at least 3 events were received
-            assert!(count >= 3);
+            assert_eq!(events.len(), 8usize);
         });
 
-        // Wait for the event listener to start up
-        tokio::time::sleep(Duration::from_millis(500)).await;
+        let timeout = 5;
 
-        // Modify the file to trigger a file system event
-        std::fs::write(&temp_file_clone, "goodbye world").expect("failed to write to temp file");
-
-        // Modify the file to trigger another file system event
-        std::fs::write(&temp_file_clone, "hello again").expect("failed to write to temp file");
-
-        // Modify the file to trigger a third file system event
-        std::fs::write(&temp_file_clone, "goodbye again").expect("failed to write to temp file");
-
-        // Wait for the events to be processed
-        tokio::time::sleep(Duration::from_millis(1000)).await;
-
-        // Signal to the watcher task that it's time to stop
-        tx.send(()).await.expect("failed to send signal");
-
-        // Stop the event listener
-        handle.abort();
+        let result = tokio::time::timeout(Duration::from_secs(timeout), handle).await;
+        match result {
+            Ok(_) => {
+                // The task completed within the timeout
+                return;
+            }
+            Err(_) => {
+                // The task timed out
+                panic!("Test timed out after {:?} seconds", timeout);
+            }
+        }
     }
 }
