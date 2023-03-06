@@ -30,3 +30,15 @@ impl From<notify::Error> for AsyncListenerError {
         AsyncListenerError::FileSystemError(err.to_string())
     }
 }
+
+impl From<std::io::Error> for AsyncListenerError {
+    fn from(err: std::io::Error) -> Self {
+        AsyncListenerError::NetworkError(err.to_string())
+    }
+}
+
+impl From<&std::io::Error> for AsyncListenerError {
+    fn from(err: &std::io::Error) -> Self {
+        AsyncListenerError::NetworkError(err.to_string())
+    }
+}

@@ -5,22 +5,24 @@ use futures::{
 };
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::PathBuf;
+use tracing::{debug, error, info, span, warn, Level};
 
 // Define a new struct to represent file system events
 #[derive(Debug)]
 pub struct FileEvent {
-    path: PathBuf,
-    event: FileEventKind,
+    pub path: PathBuf,
+    pub event: FileEventKind,
 }
 
 #[derive(Debug)]
-enum FileEventKind {
+pub enum FileEventKind {
     Created,
     Modified,
     Deleted,
     Accessed,
 }
 
+#[tracing::instrument]
 async fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify::Result<Event>>)> {
     let (mut tx, rx) = channel(1);
 
@@ -36,6 +38,7 @@ async fn async_watcher() -> notify::Result<(RecommendedWatcher, Receiver<notify:
     Ok((watcher, rx))
 }
 
+#[tracing::instrument]
 pub async fn streaming_fs_watch(
     path: PathBuf,
 ) -> impl Stream<Item = Result<FileEvent, AsyncListenerError>> {
