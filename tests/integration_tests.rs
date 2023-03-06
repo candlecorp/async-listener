@@ -102,9 +102,8 @@ mod tests {
     use tokio::net::TcpStream;
 
     #[tokio::test]
-    async fn test_streaming_tcp_watch() {
+    async fn test_streaming_tcp_packets() {
         let port: u16 = 8886;
-        let mut sender = UdpSocket::bind("0.0.0.0:0").await.unwrap();
 
         // Spawn a task to send a packet to the socket
         let handle = tokio::task::spawn(async move {
@@ -120,10 +119,13 @@ mod tests {
             }
         });
 
-        let message = b"hello";
+        // Wait for the stream to start
+        tokio::time::sleep(Duration::from_millis(1000)).await;
 
         let addr = format!("127.0.0.1:{}", port);
-        sender.send_to(&message[..], &addr).await.unwrap();
+        let sender = TcpStream::connect(addr).await.unwrap();
+        let message = b"hello";
+        sender.try_write(message).unwrap();
 
         let timeout = 5;
 
